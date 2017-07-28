@@ -7,6 +7,10 @@ public class Classifier {
     
     ArrayList<Sample> trainingSamples;
     int numFeatures = 2;
+
+    public Classifier() {
+        trainingSamples = new ArrayList<>();
+    }
     
     public Classifier(int numFeatures) {
         trainingSamples = new ArrayList<>();

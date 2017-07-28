@@ -7,12 +7,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.io.FileUtils;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
@@ -26,7 +28,7 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.objdetect.HOGDescriptor;
 
-import testocv.train.Libsvm;
+import testocv.train.LibSVM;
 import testocv.train.Sample;
 
 /**
@@ -37,38 +39,61 @@ public class TestOCV {
     
     private final CascadeClassifier classifier;
     
-    private final Libsvm svmClassifier = new Libsvm(1728);
+    private final LibSVM svmClassifier;
     
-    private final Map<String, Integer> classNames = initClassNames();
+    private final Map<String, Integer> faces = initFaces();
+    private final Map<String, Integer> hands = initHands();
     
-    private Map<String, Integer> initClassNames() {
+    private int size;
+    
+    private Map<String, Integer> initFaces() {
         
         Map<String, Integer> map = new HashMap<>();
         
-        map.put("Enojado", 0);
-        map.put("Sorpresa", 1);
-        map.put("Miedo", 2);
-        map.put("Felicidad", 3);
-        map.put("Triste", 4);
-        map.put("Disgusto", 5);
+        map.put("Enojado",      0);
+        map.put("Sorpresa",     1);
+        map.put("Miedo",        2);
+        map.put("Felicidad",    3);
+        map.put("Triste",       4);
+        map.put("Disgusto",     5);
+        
+        return map;
+    }
+    
+    private Map<String, Integer> initHands() {
+        
+        Map<String, Integer> map = new HashMap<>();
+        
+        map.put("A",        0);
+        map.put("B",        1);
+        map.put("C",        2);
+        map.put("V",        3);
+        map.put("Five",     4);
+        map.put("Point",    5);
         
         return map;
     }
 
-    public Map<String, Integer> getClassNames() {
-        return classNames;
+    public Map<String, Integer> getFaces() {
+        return Collections.unmodifiableMap(this.faces);
+    }
+
+    public Map<String, Integer> getHands() {
+        return Collections.unmodifiableMap(hands);
     }
     
-    public TestOCV() {
+    public TestOCV(int numFeatures, int size) {
         
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         
-        this.classifier = new CascadeClassifier(getPath(
+        this.classifier = new CascadeClassifier(this.getPath(
                 "/testocv/xml/haarcascade_frontalface_default.xml"));
         
+        this.svmClassifier = new LibSVM(numFeatures);
+        this.size = size;
     }
 
-    public Libsvm getSvmClassifier() {
+    public LibSVM getSvmClassifier() {
         return svmClassifier;
     }
     
@@ -105,7 +130,7 @@ public class TestOCV {
         
     }
     
-    public void training() throws URISyntaxException {
+    public void renameFiles() throws URISyntaxException, IOException {
         
         for (File folder : this.getFile("/testocv/image").listFiles()) {
             
@@ -113,39 +138,22 @@ public class TestOCV {
                 
                 String folderName = folder.getName();
                 
-                int classNumber = this.classNames.get(folderName);
+                File[] files = folder.listFiles();
                 
-                System.out.println(folderName + " : " + classNumber);
-                
-                for (File file : folder.listFiles()) {
+                for (int i = 0; i < files.length; i++) {
                     
-                    Mat scarface = this.getScarface(
-                            "/testocv/image/" + folderName + "/" + file.getName());
+                    File file = files[i];
                     
                     String extension = file.getName().split("\\.(?=[^\\.]+$)")[1];
                     
-                    if (extension.equalsIgnoreCase("jpg") || 
+                    if (extension.equalsIgnoreCase("jpg") ||
                             extension.equalsIgnoreCase("jpg") ||
                                 extension.equalsIgnoreCase("jpeg")) {
-
-                        if (scarface != null) {
-                            
-                            System.out.println(file.getName() + " : " + scarface);
-
-                            //Mat imageResize = this.resize(scarface.clone(), new Size(32, 32));
-                            Mat imageResize = this.resize(scarface.clone(), new Size(100, 100));
-                            
-                            //Imgcodecs.imwrite(file.getName(), imageResize);
-
-                            Mat grayImage = this.convertToGray(imageResize.clone());
-
-                            float[] hog = this.getHOGDescriptors(grayImage).toArray();
-
-                            Sample sample = new Sample(hog, classNumber);
-
-                            this.svmClassifier.addTrainingSample(sample);
-
-                        }
+                        
+                        File newFile = new File(folderName.toLowerCase() + (i + 1) + ".jpg");
+                        
+                        FileUtils.moveFile(file, newFile);
+                        
                     }
                     
                 }
@@ -154,9 +162,103 @@ public class TestOCV {
             
         }
         
+    }
+    
+    public void handTraining() throws URISyntaxException {
+        
+        for (File file : this.getFile("/testocv/data/train").listFiles()) {
+            
+            String fileName = file.getName();
+            
+            Mat image = Imgcodecs.imread(getPath(
+                    "/testocv/data/train/" + fileName));
+            
+            String extension = fileName.split("\\.(?=[^\\.]+$)")[1];
+            
+            if (extension.equalsIgnoreCase("jpg") ||
+                    extension.equalsIgnoreCase("jpg") ||
+                        extension.equalsIgnoreCase("jpeg")) {
+                
+                if (image != null) {
+                    
+                    int classNumber = this.hands.get(fileName.split("-")[0]);
+                    
+                    System.out.println(fileName + " \t:\t " + image);
+                    
+                    Mat imageResize = this.resize(image.clone(), new Size(size, size));
+                    
+                    Mat grayImage = this.convertToGray(imageResize.clone());
+                    
+                    float[] hog = this.getHOGDescriptors(grayImage).toArray();
+                    
+                    Sample sample = new Sample(hog, classNumber);
+                    
+                    this.svmClassifier.addTrainingSample(sample);
+                    
+                }
+            }
+            
+        }
+        
         this.svmClassifier.train();
         
-        System.out.println("OK");
+        System.out.println("OK Hand");
+        
+    }
+    
+    public void facesTraining() throws URISyntaxException {
+        
+        for (File folder : this.getFile("/testocv/image").listFiles()) {
+            
+            if (folder.isDirectory()) {
+                
+                String folderName = folder.getName();
+                
+                if (!folderName.equalsIgnoreCase("training")) {
+                    
+                    int classNumber = this.faces.get(folderName);
+
+                    System.out.println(folderName + " : " + classNumber + "\n");
+
+                    for (File file : folder.listFiles()) {
+
+                        Mat scarface = this.getScarface(
+                                "/testocv/image/" + folderName + "/" + file.getName());
+
+                        String extension = file.getName().split("\\.(?=[^\\.]+$)")[1];
+
+                        if (extension.equalsIgnoreCase("jpg") || 
+                                extension.equalsIgnoreCase("jpg") ||
+                                    extension.equalsIgnoreCase("jpeg")) {
+
+                            if (scarface != null) {
+
+                                System.out.println(file.getName() + " \t:\t " + scarface);
+
+                                Mat imageResize = this.resize(scarface.clone(), new Size(size, size));
+                                Mat grayImage = this.convertToGray(imageResize.clone());
+
+                                float[] hog = this.getHOGDescriptors(grayImage).toArray();
+                                
+                                System.out.println("size = " + hog.length);
+
+                                Sample sample = new Sample(hog, classNumber);
+
+                                this.svmClassifier.addTrainingSample(sample);
+
+                            }
+                        }
+
+                    }
+                }
+                
+            }
+            
+        }
+        
+        this.svmClassifier.train();
+        
+        System.out.println("OK Face");
         
     }
     
@@ -164,13 +266,14 @@ public class TestOCV {
         Files.write(Paths.get(filePath), builder.toString().getBytes());
     }
     
-    private Mat resize(Mat image, Size size) {
+    public Mat resize(Mat image, Size size) {
         Mat dest = new Mat();
         Imgproc.resize(image, dest, size);
         return dest;
     }
     
-    private MatOfFloat getHOGDescriptors(Mat image) {
+    public MatOfFloat getHOGDescriptors(Mat image) {
+        
         /*
         Size winsize = new Size(32, 32);
         Size blocksize = new Size(16, 16);
@@ -179,10 +282,10 @@ public class TestOCV {
         int nbins = 9;
         */
         
-        Size winsize = new Size(40, 24);
-        Size blocksize = new Size(8, 8);
+        Size winsize = new Size(64, 64);
+        Size blocksize = new Size(32, 32);
         Size blockStride = new Size(16, 16);
-        Size cellsize = new Size(2, 2);
+        Size cellsize = new Size(16, 16);
         int nbins = 9;
         
         HOGDescriptor hog = new HOGDescriptor(
@@ -203,7 +306,7 @@ public class TestOCV {
         return descriptors;
     }
     
-    private Mat getScarface(String fileName) {
+    public Mat getScarface(String fileName) {
         
         Mat image = Imgcodecs.imread(getPath(fileName));
         MatOfRect facesRect = new MatOfRect();
@@ -217,11 +320,11 @@ public class TestOCV {
         
     }
     
-    private Mat convertToGray(Mat mat) {
+    public Mat convertToGray(Mat mat) {
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2GRAY); return mat;
     }
     
-    private String getPath(String url) {
+    public String getPath(String url) {
         try {
             return new File(
                     getClass().getResource(url).toURI()
@@ -236,27 +339,6 @@ public class TestOCV {
     }
     
     public static void main(String[] args) throws URISyntaxException, IOException {
-        
-        TestOCV testOCV = new TestOCV();
-        testOCV.training();
-        
-        double[] confidences = new double[6];
-        
-        Mat testImage = Imgcodecs.imread(testOCV.getPath("/testocv/image/test.jpeg"));
-        
-        float[] hog = testOCV.getHOGDescriptors(testImage).toArray();
-        
-        Sample testSample = new Sample(hog);
-        
-        int prediction = (int) testOCV.getSvmClassifier().predict(
-                testSample, confidences
-        );
-        
-        Set<String> keys = getKeysByValue(testOCV.getClassNames(), prediction);
-        
-        String emotion = keys.iterator().next();
-        
-        System.out.println("Emotion = " + emotion);
         
     }
     

@@ -1,23 +1,24 @@
 package testocv.train;
 
 import processing.core.PApplet;
+
 import testocv.psvm.SVM;
 import testocv.psvm.SVMProblem;
 
-public class Libsvm extends Classifier {
+public class LibSVM extends Classifier {
     
-    private SVM classifier;
+    private SVM svmClassifier;
     
-    public Libsvm(int numFeatures) {
+    public LibSVM(int numFeatures) {
         super(numFeatures);
     }
     
-    float[] doubleToFloat(double[] input){
+    float[] doubleToFloat(double[] input) {
         
         float[] result = new float[input.length];
         
         for(int i = 0; i < input.length; i++){
-            result[i] = (float)input[i];
+            result[i] = (float) input[i];
         }
         
         return result;
@@ -30,39 +31,37 @@ public class Libsvm extends Classifier {
         
         int[] labels = new int[trainingSamples.size()];
         
-        for(int i = 0; i < trainingSamples.size(); i++) {
+        for (int i = 0; i < trainingSamples.size(); i++) {
             trainingVectors[i] = doubleToFloat(trainingSamples.get(i).getFeatureVector());
             labels[i] = trainingSamples.get(i).getLabel();
         }
         
-        classifier = new SVM(new PApplet());
+        svmClassifier = new SVM(new PApplet());
         
-        classifier.params.kernel_type = SVM.RBF_KERNEL;
+        svmClassifier.params.kernel_type = SVM.RBF_KERNEL;
         
         SVMProblem problem = new SVMProblem();
-        
-        System.out.println(numFeatures);
         
         problem.setNumFeatures(numFeatures);
         problem.setSampleData(labels, trainingVectors);
         
-        classifier.train(problem);
+        svmClassifier.train(problem);
     }
     
     public void save(String filename){
-        classifier.saveModel(filename);
+        svmClassifier.saveModel(filename);
     }
     
     public void load(String filename){
-        classifier.loadModel(filename, numFeatures);
+        svmClassifier.loadModel(filename, numFeatures);
     }
     
     @Override
     double predict(Sample sample) {
-        return classifier.test(doubleToFloat(sample.getFeatureVector()));
+        return svmClassifier.test(doubleToFloat(sample.getFeatureVector()));
     }
     
     public double predict(Sample sample, double[] confidence) {
-        return classifier.test(doubleToFloat(sample.getFeatureVector()), confidence);
+        return svmClassifier.test(doubleToFloat(sample.getFeatureVector()), confidence);
     }
 }
