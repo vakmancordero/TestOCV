@@ -11,6 +11,8 @@ public class LibSVM extends Classifier {
     
     public LibSVM(int numFeatures) {
         super(numFeatures);
+        
+        this.svmClassifier = new SVM(new PApplet());
     }
     
     float[] doubleToFloat(double[] input) {

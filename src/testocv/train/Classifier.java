@@ -26,7 +26,7 @@ public class Classifier {
     }
     
     public void addTrainingSamples(Sample[] samples) {
-        trainingSamples =  new ArrayList<Sample>(Arrays.asList(samples));
+        trainingSamples =  new ArrayList<>(Arrays.asList(samples));
     }
     
     public void addTrainingSamples(ArrayList<Sample> samples) {

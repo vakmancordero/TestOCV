@@ -208,55 +208,59 @@ public class TestOCV {
     
     public void facesTraining() throws URISyntaxException {
         
-        for (File folder : this.getFile("/testocv/image").listFiles()) {
-            
-            if (folder.isDirectory()) {
-                
-                String folderName = folder.getName();
-                
-                if (!folderName.equalsIgnoreCase("training")) {
-                    
-                    int classNumber = this.faces.get(folderName);
-
-                    System.out.println(folderName + " : " + classNumber + "\n");
-
-                    for (File file : folder.listFiles()) {
-
-                        Mat scarface = this.getScarface(
-                                "/testocv/image/" + folderName + "/" + file.getName());
-
-                        String extension = file.getName().split("\\.(?=[^\\.]+$)")[1];
-
-                        if (extension.equalsIgnoreCase("jpg") || 
-                                extension.equalsIgnoreCase("jpg") ||
-                                    extension.equalsIgnoreCase("jpeg")) {
-
-                            if (scarface != null) {
-
-                                System.out.println(file.getName() + " \t:\t " + scarface);
-
-                                Mat imageResize = this.resize(scarface.clone(), new Size(size, size));
-                                Mat grayImage = this.convertToGray(imageResize.clone());
-
-                                float[] hog = this.getHOGDescriptors(grayImage).toArray();
-                                
-                                System.out.println("size = " + hog.length);
-
-                                Sample sample = new Sample(hog, classNumber);
-
-                                this.svmClassifier.addTrainingSample(sample);
-
-                            }
-                        }
-
-                    }
-                }
-                
-            }
-            
-        }
+        this.svmClassifier.load("save.bin");
         
-        this.svmClassifier.train();
+//        for (File folder : this.getFile("/testocv/image").listFiles()) {
+//            
+//            if (folder.isDirectory()) {
+//                
+//                String folderName = folder.getName();
+//                
+//                if (!folderName.equalsIgnoreCase("training")) {
+//                    
+//                    int classNumber = this.faces.get(folderName);
+//
+//                    System.out.println(folderName + " : " + classNumber + "\n");
+//
+//                    for (File file : folder.listFiles()) {
+//
+//                        Mat scarface = this.getScarface(
+//                                "/testocv/image/" + folderName + "/" + file.getName());
+//
+//                        String extension = file.getName().split("\\.(?=[^\\.]+$)")[1];
+//
+//                        if (extension.equalsIgnoreCase("jpg") || 
+//                                extension.equalsIgnoreCase("jpg") ||
+//                                    extension.equalsIgnoreCase("jpeg")) {
+//
+//                            if (scarface != null) {
+//
+//                                System.out.println(file.getName() + " \t:\t " + scarface);
+//
+//                                Mat imageResize = this.resize(scarface.clone(), new Size(size, size));
+//                                Mat grayImage = this.convertToGray(imageResize.clone());
+//
+//                                float[] hog = this.getHOGDescriptors(grayImage).toArray();
+//                                
+//                                System.out.println("size = " + hog.length);
+//
+//                                Sample sample = new Sample(hog, classNumber);
+//
+//                                this.svmClassifier.addTrainingSample(sample);
+//
+//                            }
+//                        }
+//
+//                    }
+//                }
+//                
+//            }
+//            
+//        }
+//        
+//        this.svmClassifier.train();
+//        
+//        this.svmClassifier.save("save.bin");
         
         System.out.println("OK Face");
         
